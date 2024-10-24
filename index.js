@@ -1,7 +1,7 @@
 const core = require(`@actions/core`);
 const github = require(`@actions/github`);
-const azdev = require('azure-devops-node-api');
-const showdown = require('showdown');
+const azdev = require("azure-devops-node-api");
+const showdown = require("showdown");
 
 const debug = false; // debug mode for testing...always set to false before doing a commit
 const testPayload = []; // used for debugging, cut and paste payload
@@ -9,8 +9,8 @@ const testPayload = []; // used for debugging, cut and paste payload
 main();
 
 async function main() {
-  if (debug) console.log('WARNING! You are in debug mode');
-  
+  if (debug) console.log("WARNING! You are in debug mode");
+
   try {
     const context = github.context;
     const env = process.env;
@@ -34,7 +34,7 @@ async function main() {
     } else {
       console.log("Set values from payload & env");
       vm = getValuesFromPayload(github.context.payload, env);
-    }    
+    }
 
     // if the sender in the azure-boards bot, then exit code
     // nothing needs to be done
@@ -73,17 +73,18 @@ async function main() {
       if (vm.env.logLevel >= 300) {
         console.log("Print full work item object:");
         console.log(workItem);
-      }      
+      }
 
       // link the issue to the work item via AB# syntax with AzureBoards+GitHub App
       console.log("Updating issue body text with AB# syntax");
-      
-      if (vm.env.ghToken === "") {
-        console.log("Warning: Missing GitHub token and unable to update issue with AB# syntax.")
-      }
-      
-      issue = vm.env.ghToken != "" ? await updateIssueBody(vm, workItem) : "";
 
+      if (vm.env.ghToken === "") {
+        console.log(
+          "Warning: Missing GitHub token and unable to update issue with AB# syntax."
+        );
+      }
+
+      issue = vm.env.ghToken != "" ? await updateIssueBody(vm, workItem) : "";
     } else {
       console.log(`Existing work item found: ${workItem.id}`);
     }
@@ -110,7 +111,7 @@ async function main() {
         workItem != null ? await reopened(vm, workItem) : "";
         break;
       case "assigned":
-        console.log("assigned action is not yet implemented");
+        workItem != null ? await assigned(vm, workItem) : "";
         break;
       case "labeled":
         workItem != null ? await label(vm, workItem) : "";
@@ -130,9 +131,8 @@ async function main() {
 
     // set output message
     if (workItem != null || workItem != undefined) {
-      console.log(`Work item successfully created or updated: ${workItem.id}`);      
+      console.log(`Work item successfully created or updated: ${workItem.id}`);
     }
-    
   } catch (error) {
     console.log("Error in catch statement:");
     console.log(error);
@@ -143,56 +143,61 @@ async function main() {
 // create Work Item via https://docs.microsoft.com/en-us/rest/api/azure/devops/
 async function create(vm) {
   if (vm.env.logLevel >= 200) console.log(`Starting 'create' method...`);
-  
-  var converter = new showdown.Converter({tables: 'true'});
+
+  var converter = new showdown.Converter({ tables: "true" });
   var html = converter.makeHtml(vm.body);
-  
+
   converter = null;
 
   let patchDocument = [
     {
       op: "add",
       path: "/fields/System.Title",
-      value: vm.title + ` (GitHub Issue #${vm.number})`
+      value: vm.title + ` (GitHub Issue #${vm.number})`,
     },
     {
       op: "add",
       path: "/fields/System.Description",
-      value: html
+      value: html,
     },
     {
       op: "add",
       path: "/fields/Microsoft.VSTS.TCM.ReproSteps",
-      value: html
+      value: html,
     },
     {
       op: "add",
       path: "/fields/System.Tags",
-      value: "GitHub Issue; " + vm.repo_name
+      value: "GitHub Issue; " + vm.repo_name,
     },
     {
       op: "add",
       path: "/relations/-",
       value: {
         rel: "Hyperlink",
-        url: vm.url
+        url: vm.url,
       },
     },
     {
       op: "add",
       path: "/fields/System.History",
-      value: `GitHub <a href="${vm.url}" target="_new">issue #${vm.number}</a> created in <a href="${vm.repo_url}" target="_new">${vm.repo_fullname}</a> by ${vm.user}`
+      value: `GitHub <a href="${vm.url}" target="_new">issue #${vm.number}</a> created in <a href="${vm.repo_url}" target="_new">${vm.repo_fullname}</a> by ${vm.user}`,
     },
     {
       op: "add",
       path: "/fields/Microsoft.VSTS.Common.StackRank",
-      value: 1
+      value: 1,
     },
     {
       op: "add",
       path: "/fields/Microsoft.VSTS.Common.BacklogPriority",
-      value: 1
-    } 
+      value: 1,
+    },
+    {
+      op: "add",
+      path: "/fields/System.State",
+      value: vm.env.newState,
+    },
   ];
 
   // if area path is not empty, set it
@@ -200,7 +205,7 @@ async function create(vm) {
     patchDocument.push({
       op: "add",
       path: "/fields/System.AreaPath",
-      value: vm.env.areaPath
+      value: vm.env.areaPath,
     });
   }
 
@@ -209,7 +214,7 @@ async function create(vm) {
     patchDocument.push({
       op: "add",
       path: "/fields/System.IterationPath",
-      value: vm.env.iterationPath
+      value: vm.env.iterationPath,
     });
   }
 
@@ -219,7 +224,7 @@ async function create(vm) {
     patchDocument.push({
       op: "add",
       path: "/fields/System.CreatedBy",
-      value: vm.user
+      value: vm.user,
     });
   }
 
@@ -269,9 +274,9 @@ async function create(vm) {
 async function update(vm, workItem) {
   if (vm.env.logLevel >= 200) console.log(`Starting 'update' method...`);
 
-  var body = vm.body.replace(`AB#${workItem.id}`, '').trim();
-  var converter = new showdown.Converter({tables: 'true'});
-  var html = converter.makeHtml(body);  
+  var body = vm.body.replace(`AB#${workItem.id}`, "").trim();
+  var converter = new showdown.Converter({ tables: "true" });
+  var html = converter.makeHtml(body);
   converter = null;
   let patchDocument = [];
 
@@ -286,7 +291,10 @@ async function update(vm, workItem) {
     });
   }
 
-  if (workItem.fields["System.Description"] != html || workItem.fields["Microsoft.VSTS.TCM.ReproSteps"] != html ) {
+  if (
+    workItem.fields["System.Description"] != html ||
+    workItem.fields["Microsoft.VSTS.TCM.ReproSteps"] != html
+  ) {
     patchDocument.push(
       {
         op: "add",
@@ -304,7 +312,7 @@ async function update(vm, workItem) {
   var commentEdited = false;
   if (vm.comment_text != "") {
     var comment_converter = new showdown.Converter();
-    var comment_html = comment_converter.makeHtml(vm.comment_text);  
+    var comment_html = comment_converter.makeHtml(vm.comment_text);
     comment_converter = null;
 
     patchDocument.push({
@@ -314,7 +322,6 @@ async function update(vm, workItem) {
     });
     commentEdited = true;
   }
-  
 
   // verbose logging
   if (vm.env.logLevel >= 300) {
@@ -323,7 +330,7 @@ async function update(vm, workItem) {
   }
 
   if (patchDocument.length > 0) {
-    if (!commentEdited){
+    if (!commentEdited) {
       patchDocument.push({
         op: "add",
         path: "/fields/System.History",
@@ -337,13 +344,38 @@ async function update(vm, workItem) {
   }
 }
 
+// once assigned set active
+async function assigned(vm, workItem) {
+  if (vm.env.logLevel >= 200) console.log(`Starting 'update' method...`);
+
+  let patchDocument = [];
+
+  patchDocument.push({
+    op: "add",
+    path: "/fields/System.State",
+    value: vm.env.activeState,
+  });
+
+  // verbose logging
+  if (vm.env.logLevel >= 300) {
+    console.log("Print full patch object:");
+    console.log(patchDocument);
+  }
+
+  if (patchDocument.length > 0) {
+    return await updateWorkItem(patchDocument, workItem.id, vm.env);
+  } else {
+    return null;
+  }
+}
+
 // add comment to an existing work item
 async function comment(vm, workItem) {
   if (vm.env.logLevel >= 200) console.log(`Starting 'comment' method...`);
 
-  var converter = new showdown.Converter({tables: 'true'});
+  var converter = new showdown.Converter({ tables: "true" });
   var html = converter.makeHtml(vm.comment_text);
-  
+
   converter = null;
 
   let patchDocument = [];
@@ -443,7 +475,10 @@ async function label(vm, workItem) {
     patchDocument.push({
       op: "add",
       path: "/fields/System.Tags",
-      value: workItem.fields["System.Tags"] + ", " + vm.label.replace(/\p{Emoji}/gu, ''),
+      value:
+        workItem.fields["System.Tags"] +
+        ", " +
+        vm.label.replace(/\p{Emoji}/gu, ""),
     });
   }
 
@@ -502,7 +537,9 @@ async function find(vm) {
   try {
     client = await connection.getWorkItemTrackingApi();
   } catch (error) {
-    console.log("Error: Connecting to organization. Check the spelling of the organization name and ensure your token is scoped correctly.");
+    console.log(
+      "Error: Connecting to organization. Check the spelling of the organization name and ensure your token is scoped correctly."
+    );
     core.setFailed(error);
     return -1;
   }
@@ -605,9 +642,10 @@ async function updateWorkItem(patchDocument, id, env) {
 // update the GH issue body to include the AB# so that we link the Work Item to the Issue
 // this should only get called when the issue is created
 async function updateIssueBody(vm, workItem) {
-  if (vm.env.logLevel >= 200) console.log(`Starting 'updateIssueBody' method...`);
+  if (vm.env.logLevel >= 200)
+    console.log(`Starting 'updateIssueBody' method...`);
 
-  var n = vm.body.includes("AB#" + workItem.id.toString());  
+  var n = vm.body.includes("AB#" + workItem.id.toString());
 
   if (!n) {
     const octokit = new github.GitHub(vm.env.ghToken);
@@ -689,7 +727,7 @@ function getValuesFromPayload(payload, env) {
     vm.organization = split[0] != undefined ? split[0] : "";
     vm.repository = split[1] != undefined ? split[1] : "";
   }
-  
+
   // verbose logging
   if (vm.env.logLevel >= 300) {
     console.log("Print vm:");
